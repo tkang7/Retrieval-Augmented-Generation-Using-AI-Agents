@@ -44,6 +44,7 @@ class RecipeExtractor():
             return {}    
 
     def cross_check_recipe(self, recipes):
+        print("Checking over Recipes...")
         recipes = [recipe for recipe in recipes if len(recipe) == 5] # only keep recipe with all keys present
 
         for recipe in recipes:
@@ -55,5 +56,7 @@ class RecipeExtractor():
                 recipe["instructions"] = ". ".join(recipe["instructions"])
             if recipe["serving_size"][0] > recipe["serving_size"][1]:
                 recipe["serving_size"][0], recipe["serving_size"][1] = recipe["serving_size"][0], recipe["serving_size"][1] 
+
+        print("Finished Checking over Recipes!")
         
         return recipes
