@@ -19,22 +19,34 @@ class RecipeExtractor():
         response = self.llm.invoke(prompt)
         return response.content.strip().upper().startswith("YES")
     
+    def __clean_llm_json(raw: str):
+        # Remove lines starting with // or **
+        cleaned = re.sub(r"^\s*(//|\*\*).*?$", "", raw, flags=re.MULTILINE)
+        # Remove trailing commas before ] or }
+        cleaned = re.sub(r",\s*([\]}])", r"\1", cleaned)
+        return cleaned.strip()
+
     def create_recipe_object(self, text_block: str) -> dict:
         prompt = (
             "### Instruction:\n"
             "Extract the recipe information from the following text block. "
-            "Return a JSON object with the following keys: 'title', 'ingredients', 'instructions', "
-            "'notes', and 'serving_size'.\n"
-            "- The title should be the name of the recipe and MUST be in uppercase.\n"
-            "- Ingredients MUST be in a string with each ingredient on its own line.\n"
-            "- Instructions MUST be a string with full preparation steps.\n"
-            "- Notes should include any extra details or comments (e.g., italicized comments or serving tips).\n"
-            "- Serving size should be a list of 2 integers like [6, 8] where each of the values represent [min_serving_size, max_serving_size], or [0, 0] if unspecified.\n"
-            "- DO NOT make up or hallucinate ingredients, notes, or steps that are not present in the input.\n\n"
+            "Return a valid JSON object with the following exact keys: 'title', 'ingredients', 'instructions', 'notes', and 'serving_size'.\n"
+            "- 'title' MUST be in uppercase and reflect the actual recipe title.\n"
+            "- 'ingredients' MUST be a single string with each ingredient on a new line. If no ingredients are present, return an empty string.\n"
+            "- 'instructions' MUST be a complete string of preparation steps. Do not hallucinate or add missing steps.\n"
+            "- 'notes' MUST be based only on explicit text present (e.g., italicized lines). If none, use an empty string.\n"
+            "- 'serving_size' MUST be a list of two integers like [4, 6]. Use [0, 0] if unspecified.\n"
+            "- DO NOT add comments (// or **) or markdown formatting.\n"
+            "- DO NOT include any text before or after the JSON object.\n"
+            "- DO NOT include trailing commas.\n"
+            "- Ensure all list items (like in ‘ingredients’) are separated by commas."
+            "- The response MUST be a valid JSON object, parsable with json.loads().\n\n"
             f"### Input:\n{text_block.strip()}\n\n### Response:"
         )
         # print("Running create_receipe_object...")
         response = self.llm.invoke(prompt)
+
+        response = self.clean_llm_json(response.content)
 
         try:
             return json.loads(response.content.strip())
